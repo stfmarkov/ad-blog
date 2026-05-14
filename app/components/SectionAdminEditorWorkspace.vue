@@ -10,41 +10,38 @@ const props = defineProps<{
   isEditing: boolean
 }>()
 
-function addDays(base: Date, days: number): Date {
+const addDays = (base: Date, days: number): Date => {
   const d = new Date(base)
   d.setDate(d.getDate() + days)
   return d
 }
 
-function formatYmd(d: Date): string {
+const formatYmd = (d: Date): string => {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
 
-function defaultPublishDateYmd(): string {
-  return formatYmd(addDays(new Date(), 7))
-}
-
+const defaultPublishDateYmd = computed(() => formatYmd(addDays(new Date(), 7)))
 const title = ref('')
 const category = ref<Category>('rides')
 const body = ref('')
 const tags = ref<Tag[]>([])
 const tagInput = ref('')
-const publishDate = ref(defaultPublishDateYmd())
+const publishDate = ref(defaultPublishDateYmd.value)
 /** Optional featured image URL; omitted from UI when empty. */
 const image = ref('')
 const saving = ref(false)
 
-function resetNewArticleForm() {
+const resetNewArticleForm = () => {
   title.value = ''
   category.value = 'rides'
   body.value = ''
   tags.value = []
   tagInput.value = ''
   image.value = ''
-  publishDate.value = defaultPublishDateYmd()
+  publishDate.value = defaultPublishDateYmd.value
 }
 
 const addTag = () => {
@@ -79,13 +76,13 @@ watch(article, (newVal) => {
     body.value = newVal.content || ''
     tags.value = (newVal.tags ?? []).map((t) => ({ id: t, label: t, tone: 'code' }))
     publishDate.value = Number.isNaN(newVal.publishDate.getTime())
-      ? defaultPublishDateYmd()
+      ? defaultPublishDateYmd.value
       : formatYmd(newVal.publishDate)
     image.value = newVal.image || ''
   }
 }, { deep: true, immediate: true })
 
-async function submitCreate() {
+const submitCreate = async () => {
   if (props.isEditing || saving.value) return
 
   saving.value = true
@@ -116,6 +113,10 @@ async function submitCreate() {
 
 defineExpose({ submitCreate })
 
+const handleCategoryUpdate = (value: Category) => {
+  category.value = value
+}
+
 </script>
 
 <template>
@@ -128,73 +129,15 @@ defineExpose({ submitCreate })
       </div>
 
       <div class="admin-workspace__cats">
-        <button type="button" class="admin-workspace__cat neo-brutal-card"
-          :class="{ 'admin-workspace__cat--on': category === 'rides' }" @click="category = 'rides'">
-          <span class="admin-workspace__cat-inner">
-            <Icon :name="materialSymbolName('two-wheeler')" :size="24" class="admin-workspace__cat-icon-rides" />
-            <span class="admin-workspace__cat-label">RIDES</span>
-          </span>
-          <Icon :name="materialSymbolName('check-circle')" :size="22" class="admin-workspace__cat-check"
-            :class="{ 'admin-workspace__cat-check--on': category === 'rides' }" />
-        </button>
-        <button type="button" class="admin-workspace__cat neo-brutal-card"
-          :class="{ 'admin-workspace__cat--on-code': category === 'code' }" @click="category = 'code'">
-          <span class="admin-workspace__cat-inner">
-            <Icon :name="materialSymbolName('terminal')" :size="24" class="admin-workspace__cat-icon-code" />
-            <span class="admin-workspace__cat-label">CODE</span>
-          </span>
-          <Icon :name="materialSymbolName('check-circle')" :size="22" class="admin-workspace__cat-check"
-            :class="{ 'admin-workspace__cat-check--on': category === 'code' }" />
-        </button>
-        <button type="button" class="admin-workspace__cat neo-brutal-card"
-          :class="{ 'admin-workspace__cat--on-quests': category === 'quests' }" @click="category = 'quests'">
-          <span class="admin-workspace__cat-inner">
-            <Icon :name="materialSymbolName('explore')" :size="24" class="admin-workspace__cat-icon-quests" />
-            <span class="admin-workspace__cat-label">QUESTS</span>
-          </span>
-          <Icon :name="materialSymbolName('check-circle')" :size="22" class="admin-workspace__cat-check"
-            :class="{ 'admin-workspace__cat-check--on': category === 'quests' }" />
-        </button>
+        <AdminCatButton color="rides" :active="category === 'rides'" label="RIDES" icon="two-wheeler"
+          @update:active="handleCategoryUpdate('rides')" />
+        <AdminCatButton color="code" :active="category === 'code'" label="CODE" icon="terminal"
+          @update:active="handleCategoryUpdate('code')" />
+        <AdminCatButton color="quests" :active="category === 'quests'" label="QUESTS" icon="explore"
+          @update:active="handleCategoryUpdate('quests')" />
       </div>
 
-      <div class="admin-workspace__editor neo-brutal-card">
-        <div class="admin-workspace__toolbar">
-          <button type="button" class="admin-workspace__tool" aria-label="Bold">
-            <Icon :name="materialSymbolName('format-bold')" />
-          </button>
-          <button type="button" class="admin-workspace__tool" aria-label="Italic">
-            <Icon :name="materialSymbolName('format-italic')" />
-          </button>
-          <button type="button" class="admin-workspace__tool" aria-label="Heading 1">
-            <Icon :name="materialSymbolName('format-h1')" />
-          </button>
-          <button type="button" class="admin-workspace__tool" aria-label="Heading 2">
-            <Icon :name="materialSymbolName('format-h2')" />
-          </button>
-          <span class="admin-workspace__tool-divider" aria-hidden="true" />
-          <button type="button" class="admin-workspace__tool" aria-label="Bullet list">
-            <Icon :name="materialSymbolName('format-list-bulleted')" />
-          </button>
-          <button type="button" class="admin-workspace__tool" aria-label="Link">
-            <Icon :name="materialSymbolName('link')" />
-          </button>
-          <button type="button" class="admin-workspace__tool" aria-label="Image">
-            <Icon :name="materialSymbolName('image')" />
-          </button>
-          <button type="button" class="admin-workspace__tool" aria-label="Code block">
-            <Icon :name="materialSymbolName('code-blocks')" />
-          </button>
-          <div class="admin-workspace__toolbar-spacer" />
-          <button type="button" class="admin-workspace__tool" aria-label="Undo">
-            <Icon :name="materialSymbolName('undo')" />
-          </button>
-          <button type="button" class="admin-workspace__tool" aria-label="Redo">
-            <Icon :name="materialSymbolName('redo')" />
-          </button>
-        </div>
-        <textarea v-model="body" class="admin-workspace__textarea" rows="14"
-          placeholder="Once upon a time in the digital wilderniss..." />
-      </div>
+      <AdminEditor v-model="body" />
     </div>
 
     <aside class="admin-workspace__aside">
@@ -346,168 +289,6 @@ defineExpose({ submitCreate })
   .admin-workspace__cats {
     grid-template-columns: repeat(3, 1fr);
   }
-}
-
-.admin-workspace__cat {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  border-radius: var(--radius-md);
-  text-align: left;
-  cursor: pointer;
-  color: var(--color-primary);
-  transition:
-    background-color var(--transition-fast),
-    color var(--transition-fast),
-    transform var(--transition-fast),
-    box-shadow var(--transition-fast);
-}
-
-.admin-workspace__cat:hover {
-  transform: translate(1px, 1px);
-  box-shadow: var(--shadow-hard-hover);
-}
-
-.admin-workspace__cat--on {
-  background-color: var(--color-rides);
-  color: var(--color-on-primary);
-}
-
-.admin-workspace__cat--on .admin-workspace__cat-icon-rides {
-  color: var(--color-on-primary);
-}
-
-.admin-workspace__cat--on-code {
-  background-color: var(--color-code);
-  color: var(--color-on-primary);
-}
-
-.admin-workspace__cat--on-code .admin-workspace__cat-icon-code {
-  color: var(--color-on-primary);
-}
-
-.admin-workspace__cat--on-quests {
-  background-color: var(--color-quests);
-  color: var(--color-on-primary);
-}
-
-.admin-workspace__cat--on-quests .admin-workspace__cat-icon-quests {
-  color: var(--color-on-primary);
-}
-
-.admin-workspace__cat-inner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.admin-workspace__cat-icon-rides {
-  color: var(--color-rides);
-}
-
-.admin-workspace__cat-icon-code {
-  color: var(--color-code);
-}
-
-.admin-workspace__cat-icon-quests {
-  color: var(--color-quests);
-}
-
-.admin-workspace__cat-label {
-  font-family: var(--font-mono);
-  font-size: var(--type-label-caps-size);
-  font-weight: var(--type-label-caps-weight);
-  letter-spacing: var(--type-label-caps-spacing);
-}
-
-.admin-workspace__cat-check {
-  opacity: 0;
-  transition: opacity var(--transition-fast);
-}
-
-.admin-workspace__cat-check--on {
-  opacity: 1;
-}
-
-.admin-workspace__cat:hover .admin-workspace__cat-check {
-  opacity: 0.35;
-}
-
-.admin-workspace__cat--on .admin-workspace__cat-check,
-.admin-workspace__cat--on-code .admin-workspace__cat-check,
-.admin-workspace__cat--on-quests .admin-workspace__cat-check {
-  opacity: 1;
-}
-
-.admin-workspace__editor {
-  display: flex;
-  flex-direction: column;
-  min-height: 400px;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  padding: 0;
-}
-
-.admin-workspace__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 12px;
-  border-bottom: 2px solid var(--color-primary);
-  background-color: rgba(237, 237, 244, 0.35);
-}
-
-.admin-workspace__tool {
-  padding: 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  color: var(--color-primary);
-  transition:
-    background-color var(--transition-fast),
-    border-color var(--transition-fast);
-}
-
-.admin-workspace__tool:hover {
-  background-color: rgba(0, 100, 149, 0.08);
-  border-color: rgba(0, 100, 149, 0.15);
-}
-
-.admin-workspace__tool-divider {
-  width: 2px;
-  height: 24px;
-  background-color: rgba(0, 100, 149, 0.15);
-  margin: 0 8px;
-}
-
-.admin-workspace__toolbar-spacer {
-  flex: 1;
-  min-width: 8px;
-}
-
-.admin-workspace__textarea {
-  flex: 1;
-  width: 100%;
-  padding: var(--space-stack-md);
-  border: none;
-  resize: vertical;
-  min-height: 320px;
-  font-family: var(--font-body);
-  font-size: var(--type-body-lg-size);
-  line-height: var(--type-body-lg-lh);
-  color: var(--color-on-surface);
-  background-color: var(--color-surface-container-lowest);
-}
-
-.admin-workspace__textarea::placeholder {
-  color: var(--color-primary);
-  opacity: 0.4;
-  font-style: italic;
-}
-
-.admin-workspace__textarea:focus {
-  outline: none;
 }
 
 .admin-workspace__aside {
