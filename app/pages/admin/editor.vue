@@ -13,10 +13,29 @@
 </template>
 
 <script setup lang="ts">
+
+import { useArticleStore } from '~/store/article'
+
 definePageMeta({ layout: 'admin' })
 
 useHead({
   title: 'Create Article — AdventurousNerd Admin',
+})
+
+const route = useRoute()
+const articleId = route.query.id as string
+
+const articleStore = useArticleStore()
+
+onMounted(() => {
+  if (articleId) {
+    const article = articleStore.fetchArticle(articleId)
+    if (article) {
+      console.log(article)
+    }
+  } else {
+    console.log('New article')
+  }
 })
 </script>
 

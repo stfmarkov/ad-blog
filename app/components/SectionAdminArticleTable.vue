@@ -3,6 +3,7 @@ type CategorySlug = 'rides' | 'code' | 'quests'
 type StatusSlug = 'published' | 'draft'
 
 const rows: Array<{
+  id: string
   title: string
   category: CategorySlug
   categoryLabel: string
@@ -12,6 +13,7 @@ const rows: Array<{
   thumbAlt: string
 }> = [
   {
+    id: '1',
     title: 'Crossing the Trans-Euro Trail on a Scrambler',
     category: 'rides',
     categoryLabel: 'RIDES',
@@ -21,6 +23,7 @@ const rows: Array<{
     thumbAlt: 'Motorcycle on a coastal road',
   },
   {
+    id: '2',
     title: 'Optimizing Tailwind for Neo-Brutalism Designs',
     category: 'code',
     categoryLabel: 'CODE',
@@ -30,6 +33,7 @@ const rows: Array<{
     thumbAlt: 'Code on a screen',
   },
   {
+    id: '3',
     title: 'Finding the Hidden Grotto in Elden Ring: A Guide',
     category: 'quests',
     categoryLabel: 'QUESTS',
@@ -39,6 +43,7 @@ const rows: Array<{
     thumbAlt: 'Adventure journal and dice',
   },
   {
+    id: '4',
     title: 'Solo Camping in the Scottish Highlands',
     category: 'quests',
     categoryLabel: 'QUESTS',
@@ -64,7 +69,7 @@ const rows: Array<{
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in rows" :key="row.title">
+          <tr v-for="row in rows" :key="row.id">
             <td>
               <div class="admin-table__title-cell">
                 <div class="admin-table__thumb">
@@ -95,7 +100,7 @@ const rows: Array<{
             </td>
             <td>
               <div class="admin-table__actions">
-                <NuxtLink to="/admin/editor" class="admin-table__action" aria-label="Edit">
+                <NuxtLink :to="`/admin/editor?id=${row.id}`" class="admin-table__action" aria-label="Edit">
                   <Icon :name="materialSymbolName('edit')" :size="18" />
                 </NuxtLink>
                 <button type="button" class="admin-table__action" aria-label="Preview">
