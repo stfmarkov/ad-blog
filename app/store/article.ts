@@ -1,18 +1,3 @@
-// type Article struct {
-// 	ID          string    `json:"id" gorm:"primaryKey"`
-// 	AuthorID    string    `json:"author_id"`
-// 	Title       string    `json:"title"`
-// 	Content     string    `json:"content"`
-// 	Tags        []string  `json:"tags" gorm:"serializer:json"`
-// 	Category    string    `json:"category"`
-// 	Image       string    `json:"image"`
-// 	Status      string    `json:"status"`
-// 	PublishDate time.Time `json:"publish_date"`
-// 	Views       int       `json:"views"`
-// 	CreatedAt   time.Time `json:"created_at"`
-// 	UpdatedAt   time.Time `json:"updated_at"`
-// }
-
 export type Category = 'rides' | 'code' | 'quests'
 
 export interface Article {
@@ -49,7 +34,49 @@ export interface ArticleCreatePayload {
     views: number
 }
 
-export const useArticleStore = defineStore('article', () =>  {
+/** Raw article from GET /articles or nested `article`; JSON uses backend snake_case. */
+export interface ArticleApiPayload {
+    id: string
+    author_id?: string
+    authorId?: string
+    title: string
+    content: string
+    tags: string[]
+    category: string
+    image: string
+    status: string
+    publish_date?: string
+    publishDate?: string
+    views: number
+    created_at?: string
+    createdAt?: string
+    updated_at?: string
+    updatedAt?: string
+}
+
+const mapArticleFromApi = (raw: ArticleApiPayload): Article => {
+    const publishSrc = raw.publish_date ?? raw.publishDate
+    const createdSrc = raw.created_at ?? raw.createdAt
+    const updatedSrc = raw.updated_at ?? raw.updatedAt
+    const authorSrc = raw.author_id ?? raw.authorId ?? ''
+
+    return {
+        id: raw.id,
+        authorId: authorSrc,
+        title: raw.title,
+        content: raw.content,
+        tags: raw.tags ?? [],
+        category: raw.category as Category,
+        image: raw.image ?? '',
+        status: raw.status,
+        publishDate: publishSrc ? new Date(publishSrc) : new Date(0),
+        views: raw.views ?? 0,
+        createdAt: createdSrc ? new Date(createdSrc) : new Date(0),
+        updatedAt: updatedSrc ? new Date(updatedSrc) : new Date(0),
+    }
+}
+
+export const useArticleStore = defineStore('article', () => {
 
     const articles = ref<Article[]>([])
     const article = ref<Article | null>(null)
@@ -58,27 +85,24 @@ export const useArticleStore = defineStore('article', () =>  {
 
     const fetchArticles = async () => {
         const response = await fetch(`${config.serverUrl}/articles`)
-        articles.value = await response.json()
+        if (!response.ok) {
+            articles.value = []
+            throw new Error(`Failed to load articles: ${response.status}`)
+        }
+        const data = await response.json()
+        const list: ArticleApiPayload[] = Array.isArray(data)
+            ? data
+            : Array.isArray(data?.articles)
+                ? data.articles
+                : []
+        articles.value = list.map(mapArticleFromApi)
     }
 
     const fetchArticle = async (id: string) => {
         const response = await fetch(`${config.serverUrl}/articles/${id}`)
         const articleData = await response.json()
 
-        article.value = {
-            id: articleData.article.id,
-            authorId: articleData.article.author_id,
-            title: articleData.article.title,
-            content: articleData.article.content,
-            tags: articleData.article.tags,
-            category: articleData.article.category as Category,
-            image: articleData.article.image,
-            status: articleData.article.status,
-            publishDate: new Date(articleData.article.publish_date),
-            views: articleData.article.views,
-            createdAt: new Date(articleData.article.created_at),
-            updatedAt: new Date(articleData.article.updated_at)
-        }
+        article.value = mapArticleFromApi(articleData.article)
     }
 
     const createArticle = async (payload: ArticleCreatePayload) => {
@@ -95,11 +119,25 @@ export const useArticleStore = defineStore('article', () =>  {
         return raw.id as string
     }
 
+    const deleteArticle = async (id: string) => {
+        const response = await fetch(`${config.serverUrl}/articles/${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+        })
+        if (!response.ok) {
+            throw new Error(`Failed to delete article: ${response.status}`)
+        }
+        articles.value = articles.value.filter((a) => a.id !== id)
+        if (article.value?.id === id) {
+            article.value = null
+        }
+    }
+
     return {
         articles,
         article,
         fetchArticles,
         fetchArticle,
         createArticle,
+        deleteArticle,
     }
 })

@@ -58,6 +58,11 @@ const iconToneClass = computed(() => {
         box-shadow var(--transition-fast);
 }
 
+.cat-button:hover {
+    transform: translate(1px, 1px);
+    box-shadow: var(--shadow-hard-hover);
+}
+
 .cat-button--on {
     background-color: var(--color-rides);
     color: var(--color-on-primary);

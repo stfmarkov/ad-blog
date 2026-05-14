@@ -1,58 +1,83 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
+import { useArticleStore, type Category } from '~/store/article'
+
 type CategorySlug = 'rides' | 'code' | 'quests'
 type StatusSlug = 'published' | 'draft'
 
-const rows: Array<{
-  id: string
-  title: string
-  category: CategorySlug
-  categoryLabel: string
-  date: string
-  status: StatusSlug
-  thumb: string
-  thumbAlt: string
-}> = [
-  {
-    id: '1',
-    title: 'Crossing the Trans-Euro Trail on a Scrambler',
-    category: 'rides',
-    categoryLabel: 'RIDES',
-    date: 'Oct 24, 2023',
-    status: 'published',
-    thumb: '/images/bike.webp',
-    thumbAlt: 'Motorcycle on a coastal road',
-  },
-  {
-    id: '2',
-    title: 'Optimizing Tailwind for Neo-Brutalism Designs',
-    category: 'code',
-    categoryLabel: 'CODE',
-    date: 'Nov 02, 2023',
-    status: 'draft',
-    thumb: '/images/screen.webp',
-    thumbAlt: 'Code on a screen',
-  },
-  {
-    id: '3',
-    title: 'Finding the Hidden Grotto in Elden Ring: A Guide',
-    category: 'quests',
-    categoryLabel: 'QUESTS',
-    date: 'Oct 15, 2023',
-    status: 'published',
-    thumb: '/images/dice.webp',
-    thumbAlt: 'Adventure journal and dice',
-  },
-  {
-    id: '4',
-    title: 'Solo Camping in the Scottish Highlands',
-    category: 'quests',
-    categoryLabel: 'QUESTS',
-    date: 'Sept 30, 2023',
-    status: 'published',
-    thumb: '/images/keyboard.webp',
-    thumbAlt: 'Mountain landscape',
-  },
-]
+const CATEGORY_LABEL: Record<CategorySlug, string> = {
+  rides: 'RIDES',
+  code: 'CODE',
+  quests: 'QUESTS',
+}
+
+const dateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+})
+
+const isCategorySlug = (c: string): c is CategorySlug => {
+  return c === 'rides' || c === 'code' || c === 'quests'
+}
+
+const normalizeCategory = (raw: Category | string): CategorySlug => {
+  if (typeof raw === 'string' && isCategorySlug(raw)) return raw
+  return 'quests'
+}
+
+const normalizeStatus = (raw: string): StatusSlug => {
+  const v = (raw ?? '').toLowerCase()
+  return v === 'published' ? 'published' : 'draft'
+}
+
+const placeholderThumb = (category: CategorySlug): string => {
+  if (category === 'rides') return '/images/bike.webp'
+  if (category === 'code') return '/images/screen.webp'
+  return '/images/dice.webp'
+}
+
+const articleStore = useArticleStore()
+const { articles } = storeToRefs(articleStore)
+
+const rows = computed(() =>
+  articles.value.map((a) => {
+    const category = normalizeCategory(a.category)
+    const image = typeof a.image === 'string' && a.image.trim() !== ''
+      ? a.image
+      : placeholderThumb(category)
+    return {
+      id: a.id,
+      title: a.title || 'Untitled',
+      category,
+      categoryLabel: CATEGORY_LABEL[category],
+      date: Number.isFinite(a.updatedAt?.getTime?.())
+        ? dateFormatter.format(a.updatedAt)
+        : '',
+      status: normalizeStatus(a.status),
+      thumb: image,
+      thumbAlt: `${a.title || 'Article'} thumbnail`,
+    }
+  }),
+)
+
+const totalCount = computed(() => articles.value.length)
+
+const deletingId = ref<string | null>(null)
+
+const onDelete = async (row: { id: string; title: string }) => {
+  const ok = window.confirm(`Delete “${row.title}”? This cannot be undone.`)
+  if (!ok) return
+  deletingId.value = row.id
+  try {
+    await articleStore.deleteArticle(row.id)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Failed to delete article'
+    window.alert(msg)
+  } finally {
+    deletingId.value = null
+  }
+}
 </script>
 
 <template>
@@ -69,6 +94,11 @@ const rows: Array<{
           </tr>
         </thead>
         <tbody>
+          <tr v-if="rows.length === 0">
+            <td colspan="5" class="admin-table__empty">
+              No articles yet — create one from the floating action button.
+            </td>
+          </tr>
           <tr v-for="row in rows" :key="row.id">
             <td>
               <div class="admin-table__title-cell">
@@ -86,15 +116,10 @@ const rows: Array<{
             <td class="admin-table__muted">{{ row.date }}</td>
             <td>
               <div class="admin-table__status">
-                <span
-                  class="admin-table__dot"
-                  :class="
-                    row.status === 'published'
-                      ? 'admin-table__dot--green'
-                      : 'admin-table__dot--yellow'
-                  "
-                  aria-hidden="true"
-                />
+                <span class="admin-table__dot" :class="row.status === 'published'
+                    ? 'admin-table__dot--green'
+                    : 'admin-table__dot--yellow'
+                  " aria-hidden="true" />
                 <span class="admin-table__status-label">{{ row.status.toUpperCase() }}</span>
               </div>
             </td>
@@ -106,6 +131,10 @@ const rows: Array<{
                 <button type="button" class="admin-table__action" aria-label="Preview">
                   <Icon :name="materialSymbolName('visibility')" :size="18" />
                 </button>
+                <button type="button" class="admin-table__action admin-table__action--danger"
+                  :aria-label="`Delete ${row.title}`" :disabled="deletingId === row.id" @click="onDelete(row)">
+                  <Icon :name="materialSymbolName('delete')" :size="18" />
+                </button>
               </div>
             </td>
           </tr>
@@ -114,7 +143,7 @@ const rows: Array<{
     </div>
 
     <div class="admin-table__footer">
-      <span class="admin-table__foot-note">Showing 1 to 10 of 124 entries</span>
+      <span class="admin-table__foot-note">{{ totalCount }} {{ totalCount === 1 ? 'entry' : 'entries' }}</span>
       <div class="admin-table__pager">
         <button type="button" class="admin-table__page neo-brutal-btn" aria-label="Previous page">
           <Icon :name="materialSymbolName('chevron-left')" />
@@ -180,6 +209,14 @@ const rows: Array<{
   padding: var(--space-stack-md);
   vertical-align: middle;
   color: var(--color-primary);
+}
+
+.admin-table__empty {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--type-label-caps-size);
+  opacity: 0.65;
+  padding: var(--space-stack-md) var(--space-gutter);
 }
 
 .admin-table__title-cell {
@@ -291,9 +328,24 @@ const rows: Array<{
     color var(--transition-fast);
 }
 
-.admin-table__action:hover {
+.admin-table__action:hover:not(:disabled) {
   background-color: var(--color-primary);
   color: var(--color-on-primary);
+}
+
+.admin-table__action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.admin-table__action--danger {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.admin-table__action--danger:hover:not(:disabled) {
+  background-color: var(--color-error);
+  color: var(--color-on-error);
 }
 
 .admin-table__footer {
