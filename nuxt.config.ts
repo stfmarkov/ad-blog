@@ -1,3 +1,7 @@
+import dotenv from 'dotenv'
+
+dotenv.config()
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
@@ -14,6 +18,12 @@ export default defineNuxtConfig({
       { name: 'Plus Jakarta Sans',   weights: [400, 600] },
       { name: 'JetBrains Mono',      weights: [400, 700] },
     ],
+  },
+
+  runtimeConfig: {
+    public: {
+      serverUrl: process.env.SERVER_URL,
+    },
   },
 
   modules: [

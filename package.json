@@ -20,6 +20,7 @@
     "vue-router": "^5.0.6"
   },
   "devDependencies": {
-    "@nuxt/a11y": "1.0.0-alpha.1"
+    "@nuxt/a11y": "1.0.0-alpha.1",
+    "@types/node": "^25.7.0"
   }
 }

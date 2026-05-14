@@ -21,10 +21,15 @@
 </template>
 
 <script setup lang="ts">
+import { useArticleStore } from '~/store/article'
 definePageMeta({ layout: 'admin' })
 
 useHead({
   title: 'Articles — AdventurousNerd Admin',
+})
+const articleStore = useArticleStore()
+onMounted(() => {
+  articleStore.fetchArticles()
 })
 </script>
 
