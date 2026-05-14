@@ -5,8 +5,8 @@
 
     <main class="admin-editor-page__main">
       <div class="admin-editor-page__inner">
-        <SectionAdminEditorHeader />
-        <SectionAdminEditorWorkspace />
+        <SectionAdminEditorHeader @publish="onPublish" />
+        <SectionAdminEditorWorkspace ref="workspaceRef" :isEditing="isEditing" />
       </div>
     </main>
   </div>
@@ -23,20 +23,27 @@ useHead({
 })
 
 const route = useRoute()
-const articleId = route.query.id as string
+const articleId = computed(() => (route.query.id as string) || '')
 
 const articleStore = useArticleStore()
 
-onMounted(() => {
-  if (articleId) {
-    const article = articleStore.fetchArticle(articleId)
-    if (article) {
-      console.log(article)
-    }
-  } else {
-    console.log('New article')
-  }
-})
+const isEditing = computed(() => !!articleId.value)
+
+const workspaceRef = ref<{ submitCreate: () => Promise<void> } | null>(null)
+
+async function onPublish() {
+  if (isEditing.value) return
+  await workspaceRef.value?.submitCreate()
+}
+
+watch(
+  articleId,
+  async (id) => {
+    if (id) await articleStore.fetchArticle(id)
+    else articleStore.article = null
+  },
+  { immediate: true },
+)
 </script>
 
 <style scoped>

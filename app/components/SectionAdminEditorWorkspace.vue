@@ -1,17 +1,53 @@
 <script setup lang="ts">
-type Cat = 'rides' | 'code' | 'quests'
+
+import { useArticleStore } from '~/store/article'
+import type { Category, Tag } from '~/store/article'
+
+const articleStore = useArticleStore()
+const article = computed(() => articleStore.article)
+
+const props = defineProps<{
+  isEditing: boolean
+}>()
+
+function addDays(base: Date, days: number): Date {
+  const d = new Date(base)
+  d.setDate(d.getDate() + days)
+  return d
+}
+
+function formatYmd(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function defaultPublishDateYmd(): string {
+  return formatYmd(addDays(new Date(), 7))
+}
 
 const title = ref('')
-const category = ref<Cat>('rides')
+const category = ref<Category>('rides')
 const body = ref('')
-const tags = ref<Array<{ id: string; label: string; tone: 'rides' | 'code' }>>([
-  { id: '1', label: 'ADVENTURE', tone: 'rides' },
-  { id: '2', label: 'TYPESCRIPT', tone: 'code' },
-])
+const tags = ref<Tag[]>([])
 const tagInput = ref('')
-const publishDate = ref('2024-10-24')
+const publishDate = ref(defaultPublishDateYmd())
+/** Optional featured image URL; omitted from UI when empty. */
+const image = ref('')
+const saving = ref(false)
 
-function addTag() {
+function resetNewArticleForm() {
+  title.value = ''
+  category.value = 'rides'
+  body.value = ''
+  tags.value = []
+  tagInput.value = ''
+  image.value = ''
+  publishDate.value = defaultPublishDateYmd()
+}
+
+const addTag = () => {
   const t = tagInput.value.trim().toUpperCase()
   if (!t) return
   tags.value.push({
@@ -22,9 +58,64 @@ function addTag() {
   tagInput.value = ''
 }
 
-function removeTag(id: string) {
+const removeTag = (id: string) => {
   tags.value = tags.value.filter((x) => x.id !== id)
 }
+
+watch(
+  () => props.isEditing,
+  (editing) => {
+    if (!editing) resetNewArticleForm()
+  },
+  { immediate: true },
+)
+
+watch(article, (newVal) => {
+  if (!newVal) return
+
+  if (props.isEditing) {
+    title.value = newVal.title || ''
+    category.value = newVal.category || 'rides'
+    body.value = newVal.content || ''
+    tags.value = (newVal.tags ?? []).map((t) => ({ id: t, label: t, tone: 'code' }))
+    publishDate.value = Number.isNaN(newVal.publishDate.getTime())
+      ? defaultPublishDateYmd()
+      : formatYmd(newVal.publishDate)
+    image.value = newVal.image || ''
+  }
+}, { deep: true, immediate: true })
+
+async function submitCreate() {
+  if (props.isEditing || saving.value) return
+
+  saving.value = true
+  try {
+    const dateAtNoon = new Date(`${publishDate.value}T12:00:00`)
+    const publishIso = Number.isNaN(dateAtNoon.getTime())
+      ? new Date().toISOString()
+      : dateAtNoon.toISOString()
+
+    const id = await articleStore.createArticle({
+      author_id: '1',
+      title: title.value,
+      content: body.value,
+      tags: tags.value.map((t) => t.label),
+      category: category.value,
+      image: image.value.trim(),
+      status: 'draft',
+      publish_date: publishIso,
+      views: 0,
+    })
+
+    await navigateTo({ path: '/admin/editor', query: { id } })
+  }
+  finally {
+    saving.value = false
+  }
+}
+
+defineExpose({ submitCreate })
+
 </script>
 
 <template>
@@ -32,67 +123,37 @@ function removeTag(id: string) {
     <div class="admin-workspace__main">
       <div class="admin-workspace__block neo-brutal-card">
         <label class="admin-workspace__label" for="admin-article-title">Article Title</label>
-        <input
-          id="admin-article-title"
-          v-model="title"
-          type="text"
-          class="admin-workspace__title-input"
-          placeholder="Enter a compelling title..."
-          autocomplete="off"
-        />
+        <input id="admin-article-title" v-model="title" type="text" class="admin-workspace__title-input"
+          placeholder="Enter a compelling title..." autocomplete="off" />
       </div>
 
       <div class="admin-workspace__cats">
-        <button
-          type="button"
-          class="admin-workspace__cat neo-brutal-card"
-          :class="{ 'admin-workspace__cat--on': category === 'rides' }"
-          @click="category = 'rides'"
-        >
+        <button type="button" class="admin-workspace__cat neo-brutal-card"
+          :class="{ 'admin-workspace__cat--on': category === 'rides' }" @click="category = 'rides'">
           <span class="admin-workspace__cat-inner">
             <Icon :name="materialSymbolName('two-wheeler')" :size="24" class="admin-workspace__cat-icon-rides" />
             <span class="admin-workspace__cat-label">RIDES</span>
           </span>
-          <Icon
-            :name="materialSymbolName('check-circle')"
-            :size="22"
-            class="admin-workspace__cat-check"
-            :class="{ 'admin-workspace__cat-check--on': category === 'rides' }"
-          />
+          <Icon :name="materialSymbolName('check-circle')" :size="22" class="admin-workspace__cat-check"
+            :class="{ 'admin-workspace__cat-check--on': category === 'rides' }" />
         </button>
-        <button
-          type="button"
-          class="admin-workspace__cat neo-brutal-card"
-          :class="{ 'admin-workspace__cat--on-code': category === 'code' }"
-          @click="category = 'code'"
-        >
+        <button type="button" class="admin-workspace__cat neo-brutal-card"
+          :class="{ 'admin-workspace__cat--on-code': category === 'code' }" @click="category = 'code'">
           <span class="admin-workspace__cat-inner">
             <Icon :name="materialSymbolName('terminal')" :size="24" class="admin-workspace__cat-icon-code" />
             <span class="admin-workspace__cat-label">CODE</span>
           </span>
-          <Icon
-            :name="materialSymbolName('check-circle')"
-            :size="22"
-            class="admin-workspace__cat-check"
-            :class="{ 'admin-workspace__cat-check--on': category === 'code' }"
-          />
+          <Icon :name="materialSymbolName('check-circle')" :size="22" class="admin-workspace__cat-check"
+            :class="{ 'admin-workspace__cat-check--on': category === 'code' }" />
         </button>
-        <button
-          type="button"
-          class="admin-workspace__cat neo-brutal-card"
-          :class="{ 'admin-workspace__cat--on-quests': category === 'quests' }"
-          @click="category = 'quests'"
-        >
+        <button type="button" class="admin-workspace__cat neo-brutal-card"
+          :class="{ 'admin-workspace__cat--on-quests': category === 'quests' }" @click="category = 'quests'">
           <span class="admin-workspace__cat-inner">
             <Icon :name="materialSymbolName('explore')" :size="24" class="admin-workspace__cat-icon-quests" />
             <span class="admin-workspace__cat-label">QUESTS</span>
           </span>
-          <Icon
-            :name="materialSymbolName('check-circle')"
-            :size="22"
-            class="admin-workspace__cat-check"
-            :class="{ 'admin-workspace__cat-check--on': category === 'quests' }"
-          />
+          <Icon :name="materialSymbolName('check-circle')" :size="22" class="admin-workspace__cat-check"
+            :class="{ 'admin-workspace__cat-check--on': category === 'quests' }" />
         </button>
       </div>
 
@@ -131,12 +192,8 @@ function removeTag(id: string) {
             <Icon :name="materialSymbolName('redo')" />
           </button>
         </div>
-        <textarea
-          v-model="body"
-          class="admin-workspace__textarea"
-          rows="14"
-          placeholder="Once upon a time in the digital wilderniss..."
-        />
+        <textarea v-model="body" class="admin-workspace__textarea" rows="14"
+          placeholder="Once upon a time in the digital wilderniss..." />
       </div>
     </div>
 
@@ -151,6 +208,10 @@ function removeTag(id: string) {
           <p class="admin-workspace__drop-hint">Drag & drop or click</p>
           <img src="/images/bike.webp" alt="" class="admin-workspace__drop-preview" width="400" height="225" />
         </div>
+        <label class="admin-workspace__field-label admin-workspace__image-url-label" for="admin-article-image-url">Image
+          URL (optional)</label>
+        <input id="admin-article-image-url" v-model="image" type="url" class="admin-workspace__image-url-input"
+          placeholder="https://…" autocomplete="off" />
       </div>
 
       <div class="admin-workspace__panel neo-brutal-card">
@@ -159,12 +220,8 @@ function removeTag(id: string) {
           Tags
         </h3>
         <div class="admin-workspace__tags">
-          <span
-            v-for="t in tags"
-            :key="t.id"
-            class="admin-workspace__tag"
-            :class="t.tone === 'rides' ? 'admin-workspace__tag--rides' : 'admin-workspace__tag--code'"
-          >
+          <span v-for="t in tags" :key="t.id" class="admin-workspace__tag"
+            :class="t.tone === 'rides' ? 'admin-workspace__tag--rides' : 'admin-workspace__tag--code'">
             {{ t.label }}
             <button type="button" class="admin-workspace__tag-x" @click="removeTag(t.id)">
               <Icon :name="materialSymbolName('close')" :size="14" />
@@ -172,13 +229,8 @@ function removeTag(id: string) {
           </span>
         </div>
         <div class="admin-workspace__tag-row">
-          <input
-            v-model="tagInput"
-            type="text"
-            class="admin-workspace__tag-input"
-            placeholder="Add a tag..."
-            @keydown.enter.prevent="addTag"
-          />
+          <input v-model="tagInput" type="text" class="admin-workspace__tag-input" placeholder="Add a tag..."
+            @keydown.enter.prevent="addTag" />
           <button type="button" class="admin-workspace__tag-add" @click="addTag">
             Add
           </button>
@@ -194,12 +246,7 @@ function removeTag(id: string) {
           <div>
             <label class="admin-workspace__field-label" for="admin-publish-date">Publish date</label>
             <div class="admin-workspace__date-wrap">
-              <input
-                id="admin-publish-date"
-                v-model="publishDate"
-                type="date"
-                class="admin-workspace__date"
-              />
+              <input id="admin-publish-date" v-model="publishDate" type="date" class="admin-workspace__date" />
               <Icon :name="materialSymbolName('calendar-today')" :size="18" class="admin-workspace__date-icon" />
             </div>
           </div>
@@ -220,7 +267,7 @@ function removeTag(id: string) {
         </div>
       </div>
 
-      <div class="admin-workspace__danger">
+      <div class="admin-workspace__danger" v-if="isEditing">
         <button type="button" class="admin-workspace__trash">
           <Icon :name="materialSymbolName('delete')" :size="18" />
           Move to Trash
@@ -537,6 +584,26 @@ function removeTag(id: string) {
 
 .admin-workspace__drop:hover .admin-workspace__drop-preview {
   opacity: 0.35;
+}
+
+.admin-workspace__image-url-label {
+  margin-top: 16px;
+}
+
+.admin-workspace__image-url-input {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px;
+  border: 2px solid var(--color-outline-variant);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  background-color: transparent;
+}
+
+.admin-workspace__image-url-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
 }
 
 .admin-workspace__tags {

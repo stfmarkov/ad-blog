@@ -1,3 +1,9 @@
+<script setup lang="ts">
+const emit = defineEmits<{
+  publish: []
+}>()
+</script>
+
 <template>
   <div class="admin-editor-head">
     <div>
@@ -9,7 +15,8 @@
         <Icon :name="materialSymbolName('visibility')" :size="18" />
         Preview
       </button>
-      <button type="button" class="admin-editor-head__btn admin-editor-head__btn--publish neo-brutal-btn">
+      <button type="button" class="admin-editor-head__btn admin-editor-head__btn--publish neo-brutal-btn"
+        @click="emit('publish')">
         <Icon :name="materialSymbolName('publish')" :size="18" />
         Publish Post
       </button>
