@@ -141,21 +141,7 @@ const handleCategoryUpdate = (value: Category) => {
     </div>
 
     <aside class="admin-workspace__aside">
-      <div class="admin-workspace__panel neo-brutal-card">
-        <h3 class="admin-workspace__panel-title">
-          <Icon :name="materialSymbolName('image')" :size="18" />
-          Featured Image
-        </h3>
-        <div class="admin-workspace__drop">
-          <Icon :name="materialSymbolName('cloud-upload')" :size="40" class="admin-workspace__drop-icon" />
-          <p class="admin-workspace__drop-hint">Drag & drop or click</p>
-          <img src="/images/bike.webp" alt="" class="admin-workspace__drop-preview" width="400" height="225" />
-        </div>
-        <label class="admin-workspace__field-label admin-workspace__image-url-label" for="admin-article-image-url">Image
-          URL (optional)</label>
-        <input id="admin-article-image-url" v-model="image" type="url" class="admin-workspace__image-url-input"
-          placeholder="https://…" autocomplete="off" />
-      </div>
+      <AdminUploadPanel v-model:image="image" />
 
       <div class="admin-workspace__panel neo-brutal-card">
         <h3 class="admin-workspace__panel-title">
@@ -302,7 +288,7 @@ const handleCategoryUpdate = (value: Category) => {
   border-radius: var(--radius-md);
 }
 
-.admin-workspace__panel-title {
+:deep(.admin-workspace__panel-title) {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -313,78 +299,6 @@ const handleCategoryUpdate = (value: Category) => {
   text-transform: uppercase;
   color: var(--color-primary);
   margin-bottom: 16px;
-}
-
-.admin-workspace__drop {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  aspect-ratio: 16 / 10;
-  border: 2px dashed var(--color-outline-variant);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  overflow: hidden;
-  transition: background-color var(--transition-fast);
-}
-
-.admin-workspace__drop:hover {
-  background-color: rgba(237, 237, 244, 0.5);
-}
-
-.admin-workspace__drop-icon {
-  color: var(--color-primary);
-  opacity: 0.2;
-  transition: transform var(--transition-fast);
-}
-
-.admin-workspace__drop:hover .admin-workspace__drop-icon {
-  transform: scale(1.08);
-}
-
-.admin-workspace__drop-hint {
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  letter-spacing: var(--type-label-caps-spacing);
-  text-transform: uppercase;
-  margin-top: 8px;
-  opacity: 0.4;
-  color: var(--color-primary);
-}
-
-.admin-workspace__drop-preview {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0.1;
-  transition: opacity var(--transition-fast);
-}
-
-.admin-workspace__drop:hover .admin-workspace__drop-preview {
-  opacity: 0.35;
-}
-
-.admin-workspace__image-url-label {
-  margin-top: 16px;
-}
-
-.admin-workspace__image-url-input {
-  width: 100%;
-  margin-top: 4px;
-  padding: 8px;
-  border: 2px solid var(--color-outline-variant);
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--color-primary);
-  background-color: transparent;
-}
-
-.admin-workspace__image-url-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
 }
 
 .admin-workspace__tags {
@@ -461,7 +375,7 @@ const handleCategoryUpdate = (value: Category) => {
   gap: 16px;
 }
 
-.admin-workspace__field-label {
+:deep(.admin-workspace__field-label) {
   display: block;
   font-family: var(--font-mono);
   font-size: 0.625rem;

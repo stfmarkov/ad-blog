@@ -135,6 +135,28 @@ export const useArticleStore = defineStore('article', () => {
         return raw.id as string
     }
 
+    const uploadArticleImage = async (file: File, articleId: string): Promise<string> => {
+        const base = String(config.serverUrl ?? '').trim().replace(/\/+$/, '')
+        if (!base) {
+            throw new Error('SERVER_URL is not configured')
+        }
+        const endpoint = `${base}/articles/${articleId}/image`
+        const fieldName = String('image')
+        const formData = new FormData()
+        formData.append(fieldName, file)
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            body: formData,
+        })
+        if (!response.ok) {
+            throw new Error(`Image upload failed: ${response.status}`)
+        }
+        
+
+        const data = await response.json()
+        return data.url as string
+    }
+
     const deleteArticle = async (id: string) => {
         const response = await fetch(`${config.serverUrl}/articles/${encodeURIComponent(id)}`, {
             method: 'DELETE',
@@ -154,6 +176,7 @@ export const useArticleStore = defineStore('article', () => {
         fetchArticles,
         fetchArticle,
         createArticle,
+        uploadArticleImage,
         deleteArticle,
     }
 })
