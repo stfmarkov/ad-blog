@@ -99,10 +99,26 @@ export const useArticleStore = defineStore('article', () => {
     }
 
     const fetchArticle = async (id: string) => {
-        const response = await fetch(`${config.serverUrl}/articles/${id}`)
-        const articleData = await response.json()
-
-        article.value = mapArticleFromApi(articleData.article)
+        article.value = null
+        const base = config.serverUrl
+        if (!base) {
+            return
+        }
+        const response = await fetch(`${base}/articles/${encodeURIComponent(id)}`)
+        if (!response.ok) {
+            return
+        }
+        let data: unknown
+        try {
+            data = await response.json()
+        } catch {
+            return
+        }
+        const raw = (data as { article?: ArticleApiPayload }).article ?? (data as ArticleApiPayload)
+        if (!raw || typeof raw !== 'object' || !('id' in raw)) {
+            return
+        }
+        article.value = mapArticleFromApi(raw as ArticleApiPayload)
     }
 
     const createArticle = async (payload: ArticleCreatePayload) => {
